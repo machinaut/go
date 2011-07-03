@@ -213,6 +213,50 @@ NOPLAN9BUILD=\
 DIRS:=$(filter-out $(NOPLAN9BUILD),$(DIRS))
 endif
 
+ifeq ($(GOOS),tiny)
+DIRS=\
+	archive/zip \
+	big \
+	bufio \
+	bytes \
+	cmath \
+	compress/flate\
+	compress/gzip\
+	compress/zlib\
+	container/heap\
+	container/list\
+	container/ring\
+	container/vector\
+	encoding/ascii85\
+	encoding/base32\
+	encoding/base64\
+	encoding/binary\
+	encoding/git85\
+	encoding/hex\
+	encoding/line\
+	encoding/pem\
+	fmt\
+	hash\
+	hash/adler32\
+	hash/crc32\
+	hash/crc64\
+	io \
+	math \
+	os \
+	rand \
+	reflect \
+	regexp \
+	runtime \
+	sort \
+	strconv \
+	strings \
+	sync \
+	syscall \
+	unicode \
+	utf16 \
+	utf8 \
+
+endif
 NOTEST+=\
 	crypto\
 	crypto/openpgp/error\

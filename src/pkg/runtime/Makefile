@@ -30,6 +30,9 @@ GOFILES=\
 
 CLEANFILES+=version.go version_*.go
 
+GOFILES_tiny=\
+	tiny/io.go
+
 OFILES_windows=\
 	syscall.$O\
 

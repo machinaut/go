@@ -75,8 +75,8 @@ else ifeq ($(GOARCH),amd64)
 O:=6
 else ifeq ($(GOARCH),arm)
 O:=5
-ifneq ($(GOOS),linux)
-$(error Invalid $$GOOS '$(GOOS)' for GOARCH=arm; must be linux)
+ifeq ($(GOOS),$(filter $(GOOS),linux tiny))
+$(error Invalid $$GOOS '$(GOOS)' for GOARCH=arm; must be linux or tiny)
 endif
 else
 $(error Missing $$O for '$(GOARCH)')

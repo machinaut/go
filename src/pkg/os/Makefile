@@ -75,7 +75,17 @@ GOFILES_plan9=\
 	exec_plan9.go\
 	str.go\
 
-GOFILES+=$(GOFILES_$(GOOS))
+GOFILES_tiny=\
+	time_tiny.go\
+	error_tiny.go\
+	proc_tiny.go\
+	file_tiny.go\
+
+ifeq ($(GOOS),tiny)
+  GOFILES=$(GOFILES_tiny)
+else
+  GOFILES+=$(GOFILES_$(GOOS))
+endif
 
 CLEANFILES+=signal_unix.go signal_windows.go
 

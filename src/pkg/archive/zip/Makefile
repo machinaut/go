@@ -9,4 +9,9 @@ GOFILES=\
 	reader.go\
 	struct.go\
 
+ifeq ($(GOOS),tiny)
+else
+GOFILES+=reader_file.go
+endif
+
 include ../../../Make.pkg

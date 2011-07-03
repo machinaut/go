@@ -52,25 +52,6 @@ func (f *File) hasDataDescriptor() bool {
 	return f.Flags&0x8 != 0
 }
 
-// OpenReader will open the Zip file specified by name and return a ReaderCloser.
-func OpenReader(name string) (*ReadCloser, os.Error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	fi, err := f.Stat()
-	if err != nil {
-		f.Close()
-		return nil, err
-	}
-	r := new(ReadCloser)
-	if err := r.init(f, fi.Size); err != nil {
-		f.Close()
-		return nil, err
-	}
-	return r, nil
-}
-
 // NewReader returns a new Reader reading from r, which is assumed to
 // have the given size in bytes.
 func NewReader(r io.ReaderAt, size int64) (*Reader, os.Error) {

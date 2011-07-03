@@ -36,6 +36,9 @@ GOFILES_plan9=\
 	zoneinfo_posix.go\
 	zoneinfo_plan9.go\
 
+GOFILES_tiny=\
+	zoneinfo_tiny.go\
+
 GOFILES+=$(GOFILES_$(GOOS))
 
 include ../../Make.pkg
