@@ -35,6 +35,8 @@ GOOS_LIST=\
 	linux\
 	plan9\
 	windows\
+	gofykernel\
+	gofy\
 
 GOARCH_LIST=\
 	386\
@@ -63,6 +65,12 @@ endif
 # darwin requires GOHOSTARCH match GOARCH
 ifeq ($(GOOS),darwin)
 GOHOSTARCH:=$(GOARCH)
+endif
+
+ifeq ($(GOOS),$(filter $(GOOS),gofy gofykernel))
+ifneq ($(GOARCH),amd64)
+$(error Invalid $$GOARCH '$(GOARCH)' for GOOS=$(GOOS); must be amd64)
+endif
 endif
 
 ifeq ($(filter $(GOARCH),$(GOARCH_LIST)),)
