@@ -64,6 +64,7 @@ src/pkg/runtime/runtime.acid.*
 src/pkg/runtime/runtime_defs.go
 src/pkg/runtime/version.go
 src/pkg/runtime/version_amd64.go
+src/pkg/runtime/version_gofy.go
 src/pkg/runtime/version_darwin.go
 src/pkg/unicode/maketables
 src/pkg/github.com/
