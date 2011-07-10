@@ -304,10 +304,11 @@ func (req *Request) write(w io.Writer, usingProxy bool) os.Error {
 		}
 	}
 
-	fmt.Fprintf(w, "%s %s HTTP/1.1\r\n", valueOrDefault(req.Method, "GET"), uri)
+	bw := bufio.NewWriter(w)
+	fmt.Fprintf(bw, "%s %s HTTP/1.1\r\n", valueOrDefault(req.Method, "GET"), uri)
 
 	// Header lines
-	fmt.Fprintf(w, "Host: %s\r\n", host)
+	fmt.Fprintf(bw, "Host: %s\r\n", host)
 
 	// Use the defaultUserAgent unless the Header contains one, which
 	// may be blank to not send the header.
@@ -318,7 +319,7 @@ func (req *Request) write(w io.Writer, usingProxy bool) os.Error {
 		}
 	}
 	if userAgent != "" {
-		fmt.Fprintf(w, "User-Agent: %s\r\n", userAgent)
+		fmt.Fprintf(bw, "User-Agent: %s\r\n", userAgent)
 	}
 
 	// Process Body,ContentLength,Close,Trailer
@@ -326,25 +327,25 @@ func (req *Request) write(w io.Writer, usingProxy bool) os.Error {
 	if err != nil {
 		return err
 	}
-	err = tw.WriteHeader(w)
+	err = tw.WriteHeader(bw)
 	if err != nil {
 		return err
 	}
 
 	// TODO: split long values?  (If so, should share code with Conn.Write)
-	err = req.Header.WriteSubset(w, reqWriteExcludeHeader)
+	err = req.Header.WriteSubset(bw, reqWriteExcludeHeader)
 	if err != nil {
 		return err
 	}
 
-	io.WriteString(w, "\r\n")
+	io.WriteString(bw, "\r\n")
 
 	// Write body and trailer
-	err = tw.WriteBody(w)
+	err = tw.WriteBody(bw)
 	if err != nil {
 		return err
 	}
-
+	bw.Flush()
 	return nil
 }
 
@@ -427,10 +428,6 @@ type chunkedReader struct {
 	err os.Error
 }
 
-func newChunkedReader(r *bufio.Reader) *chunkedReader {
-	return &chunkedReader{r: r}
-}
-
 func (cr *chunkedReader) beginChunk() {
 	// chunk-size CRLF
 	var line string
@@ -510,13 +507,6 @@ func NewRequest(method, url string, body io.Reader) (*Request, os.Error) {
 			req.ContentLength = int64(v.Len())
 		case *bytes.Buffer:
 			req.ContentLength = int64(v.Len())
-		default:
-			req.ContentLength = -1 // chunked
-		}
-		if req.ContentLength == 0 {
-			// To prevent chunking and disambiguate this
-			// from the default ContentLength zero value.
-			req.TransferEncoding = []string{"identity"}
 		}
 	}
 
@@ -549,7 +539,7 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	}
 
 	var f []string
-	if f = strings.Split(s, " ", 3); len(f) < 3 {
+	if f = strings.SplitN(s, " ", 3); len(f) < 3 {
 		return nil, &badStringError{"malformed HTTP request", s}
 	}
 	req.Method, req.RawURL, req.Proto = f[0], f[1], f[2]
@@ -668,11 +658,11 @@ func ParseQuery(query string) (m Values, err os.Error) {
 }
 
 func parseQuery(m Values, query string) (err os.Error) {
-	for _, kv := range strings.Split(query, "&", -1) {
+	for _, kv := range strings.Split(query, "&") {
 		if len(kv) == 0 {
 			continue
 		}
-		kvPair := strings.Split(kv, "=", 2)
+		kvPair := strings.SplitN(kv, "=", 2)
 
 		var key, value string
 		var e os.Error
@@ -709,7 +699,7 @@ func (r *Request) ParseForm() (err os.Error) {
 			return os.NewError("missing form body")
 		}
 		ct := r.Header.Get("Content-Type")
-		switch strings.Split(ct, ";", 2)[0] {
+		switch strings.SplitN(ct, ";", 2)[0] {
 		case "text/plain", "application/x-www-form-urlencoded", "":
 			const maxFormSize = int64(10 << 20) // 10 MB is a lot of text.
 			b, e := ioutil.ReadAll(io.LimitReader(r.Body, maxFormSize+1))

@@ -4,9 +4,13 @@
 
 include ../../../Make.inc
 
-TARG=template
+TARG=exp/template
 GOFILES=\
+	exec.go\
+	funcs.go\
+	helper.go\
 	lex.go\
 	parse.go\
+	set.go\
 
 include ../../../Make.pkg

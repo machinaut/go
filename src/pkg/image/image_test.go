@@ -10,6 +10,7 @@ import (
 
 type image interface {
 	Image
+	Opaque() bool
 	Set(int, int, Color)
 	SubImage(Rectangle) Image
 }
@@ -49,6 +50,10 @@ func TestImage(t *testing.T) {
 			t.Errorf("%T: at (6, 3), want a non-zero color, got %v", m, m.At(6, 3))
 			continue
 		}
+		if !m.SubImage(Rect(6, 3, 7, 4)).(image).Opaque() {
+			t.Errorf("%T: at (6, 3) was not opaque", m)
+			continue
+		}
 		m = m.SubImage(Rect(3, 2, 9, 8)).(image)
 		if !Rect(3, 2, 9, 8).Eq(m.Bounds()) {
 			t.Errorf("%T: sub-image want bounds %v, got %v", m, Rect(3, 2, 9, 8), m.Bounds())
@@ -67,6 +72,11 @@ func TestImage(t *testing.T) {
 			t.Errorf("%T: sub-image at (3, 3), want a non-zero color, got %v", m, m.At(3, 3))
 			continue
 		}
+		// Test that taking an empty sub-image starting at a corner does not panic.
+		m.SubImage(Rect(0, 0, 0, 0))
+		m.SubImage(Rect(10, 0, 10, 0))
+		m.SubImage(Rect(0, 10, 0, 10))
+		m.SubImage(Rect(10, 10, 10, 10))
 	}
 }
 

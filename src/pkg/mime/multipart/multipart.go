@@ -21,10 +21,12 @@ import (
 	"mime"
 	"net/textproto"
 	"os"
-	"regexp"
 )
 
-var headerRegexp *regexp.Regexp = regexp.MustCompile("^([a-zA-Z0-9\\-]+): *([^\r\n]+)")
+// TODO(bradfitz): inline these once the compiler can inline them in
+// read-only situation (such as bytes.HasSuffix)
+var lf = []byte("\n")
+var crlf = []byte("\r\n")
 
 var emptyParams = make(map[string]string)
 
@@ -81,6 +83,7 @@ func NewReader(reader io.Reader, boundary string) *Reader {
 	return &Reader{
 		bufReader: bufio.NewReader(reader),
 
+		nl:               b[:2],
 		nlDashBoundary:   b[:len(b)-2],
 		dashBoundaryDash: b[2:],
 		dashBoundary:     b[2 : len(b)-2],
@@ -100,22 +103,12 @@ func newPart(mr *Reader) (*Part, os.Error) {
 }
 
 func (bp *Part) populateHeaders() os.Error {
-	for {
-		lineBytes, err := bp.mr.bufReader.ReadSlice('\n')
-		if err != nil {
-			return err
-		}
-		line := string(lineBytes)
-		if line == "\n" || line == "\r\n" {
-			return nil
-		}
-		if matches := headerRegexp.FindStringSubmatch(line); len(matches) == 3 {
-			bp.Header.Add(matches[1], matches[2])
-			continue
-		}
-		return os.NewError("Unexpected header line found parsing multipart body")
+	r := textproto.NewReader(bp.mr.bufReader)
+	header, err := r.ReadMIMEHeader()
+	if err == nil {
+		bp.Header = header
 	}
-	panic("unreachable")
+	return err
 }
 
 // Read reads the body of a part, after its headers and before the
@@ -180,7 +173,7 @@ type Reader struct {
 	currentPart *Part
 	partsRead   int
 
-	nlDashBoundary, dashBoundaryDash, dashBoundary []byte
+	nl, nlDashBoundary, dashBoundaryDash, dashBoundary []byte
 }
 
 // NextPart returns the next part in the multipart or an error.
@@ -221,11 +214,11 @@ func (mr *Reader) NextPart() (*Part, os.Error) {
 			continue
 		}
 
-		if bytes.Equal(line, []byte("\r\n")) {
-			// Consume the "\r\n" separator between the
-			// body of the previous part and the boundary
-			// line we now expect will follow. (either a
-			// new part or the end boundary)
+		// Consume the "\n" or "\r\n" separator between the
+		// body of the previous part and the boundary line we
+		// now expect will follow. (either a new part or the
+		// end boundary)
+		if bytes.Equal(line, mr.nl) {
 			expectNewPart = true
 			continue
 		}
@@ -245,13 +238,17 @@ func (mr *Reader) isBoundaryDelimiterLine(line []byte) bool {
 	if !bytes.HasPrefix(line, mr.dashBoundary) {
 		return false
 	}
-	if bytes.HasSuffix(line, []byte("\r\n")) {
-		return onlyHorizontalWhitespace(line[len(mr.dashBoundary) : len(line)-2])
+	if bytes.HasSuffix(line, mr.nl) {
+		return onlyHorizontalWhitespace(line[len(mr.dashBoundary) : len(line)-len(mr.nl)])
 	}
 	// Violate the spec and also support newlines without the
 	// carriage return...
-	if bytes.HasSuffix(line, []byte("\n")) {
-		return onlyHorizontalWhitespace(line[len(mr.dashBoundary) : len(line)-1])
+	if mr.partsRead == 0 && bytes.HasSuffix(line, lf) {
+		if onlyHorizontalWhitespace(line[len(mr.dashBoundary) : len(line)-1]) {
+			mr.nl = mr.nl[1:]
+			mr.nlDashBoundary = mr.nlDashBoundary[1:]
+			return true
+		}
 	}
 	return false
 }
@@ -268,5 +265,5 @@ func onlyHorizontalWhitespace(s []byte) bool {
 func hasPrefixThenNewline(s, prefix []byte) bool {
 	return bytes.HasPrefix(s, prefix) &&
 		(len(s) == len(prefix)+1 && s[len(s)-1] == '\n' ||
-			len(s) == len(prefix)+2 && bytes.HasSuffix(s, []byte("\r\n")))
+			len(s) == len(prefix)+2 && bytes.HasSuffix(s, crlf))
 }
